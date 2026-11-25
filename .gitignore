@@ -1,0 +1,10 @@
+node_modules/
+*.tgz
+*.log
+.DS_Store
+.env
+.env.*
+.session.key
+*.db
+*.db-shm
+*.db-wal
