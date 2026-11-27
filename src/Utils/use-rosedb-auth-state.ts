@@ -148,15 +148,23 @@ async function acquireProcessLock(lockPath: string) {
     return { lockPath, release: async () => { await unlink(lockPath).catch(() => {}); } };
 }
 
-async function maybeCompactRoseDB(dbPath: string, thresholdBytes = 10 * 1024 * 1024, maxPreKeys = 100): Promise<{ compacted: boolean; oldSizeBytes: number; newSizeBytes: number }> {
+async function maybeCompactRoseDB(dbPath: string, thresholdBytes = 3 * 1024 * 1024, maxPreKeys = 100): Promise<{ compacted: boolean; oldSizeBytes: number; newSizeBytes: number }> {
     try {
         const dataFile = join(dbPath, 'data.rdb');
-        const st = await stat(dataFile).catch(() => null);
-        if (!st || st.size < thresholdBytes) {
-            return { compacted: false, oldSizeBytes: st ? st.size : 0, newSizeBytes: st ? st.size : 0 };
+        const walFile = join(dbPath, 'wal.log');
+        const [stData, stWal] = await Promise.all([
+            stat(dataFile).catch(() => null),
+            stat(walFile).catch(() => null)
+        ]);
+        const dataSize = stData ? stData.size : 0;
+        const walSize = stWal ? stWal.size : 0;
+        const totalSize = dataSize + walSize;
+
+        if (totalSize < thresholdBytes && walSize < 2 * 1024 * 1024) {
+            return { compacted: false, oldSizeBytes: totalSize, newSizeBytes: totalSize };
         }
 
-        const oldSizeBytes = st.size;
+        const oldSizeBytes = totalSize;
         const tmpPath = `${dbPath}.compact.${Date.now()}`;
         const dbOld = new Database(dbPath);
         const dbNew = new Database(tmpPath, { sync_on_commit: true });
@@ -193,8 +201,11 @@ async function maybeCompactRoseDB(dbPath: string, thresholdBytes = 10 * 1024 * 1
         await rename(tmpPath, dbPath);
         await rm(backupPath, { recursive: true, force: true }).catch(() => {});
 
-        const newSt = await stat(dataFile).catch(() => null);
-        const newSizeBytes = newSt ? newSt.size : 0;
+        const [newStData, newStWal] = await Promise.all([
+            stat(dataFile).catch(() => null),
+            stat(walFile).catch(() => null)
+        ]);
+        const newSizeBytes = (newStData ? newStData.size : 0) + (newStWal ? newStWal.size : 0);
         return { compacted: true, oldSizeBytes, newSizeBytes };
     } catch {
         return { compacted: false, oldSizeBytes: 0, newSizeBytes: 0 };
@@ -230,7 +241,7 @@ export const useRoseDBAuthState = async (options: RoseDBAuthStateOptions): Promi
         maxPreKeys = 100,
         checkpointIntervalOps = 50,
         autoCompact = true,
-        compactThresholdBytes = 10 * 1024 * 1024
+        compactThresholdBytes = 3 * 1024 * 1024
     } = options || ({} as RoseDBAuthStateOptions);
 
     if (!sessionId || typeof sessionId !== 'string') throw new Error('sessionId must be a non-empty string');
