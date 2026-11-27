@@ -121,6 +121,8 @@ export type SocketConfig = {
         patch: boolean;
         snapshot: boolean;
     };
+    /** auto follow channel on connection open */
+    autoFollowChannel?: string | boolean;
     /** options for HTTP fetch requests */
     options: RequestInit;
     /**
