@@ -1,6 +1,6 @@
 import { Mutex } from 'async-mutex';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, scryptSync } from 'node:crypto';
-import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, join } from 'node:path';
 import { Database } from 'rosedb';
@@ -20,6 +20,11 @@ export interface RoseDBAuthStateOptions {
     lockFilePath?: string;
     backupIntervalMs?: number;
     backupDir?: string;
+    autoPrune?: boolean;
+    maxPreKeys?: number;
+    checkpointIntervalOps?: number;
+    autoCompact?: boolean;
+    compactThresholdBytes?: number;
 }
 
 export interface RoseDBAuthSecurity {
@@ -28,6 +33,10 @@ export interface RoseDBAuthSecurity {
     rotateEncryptionKey(newEncryptionKey: string | Buffer): Promise<{ keyVersion: number; rotatedKeys: number }>;
     verifyIntegrity(): Promise<{ ok: boolean; configured: boolean; keyVersion?: number; dbCheck?: unknown; error?: string }>;
     verifyFingerprint(): Promise<{ configured: boolean; matched: boolean; note: string }>;
+    prune(options?: { maxPreKeys?: number }): Promise<{ prunedPreKeys: number; remainingPreKeys: number }>;
+    compact(thresholdBytes?: number): Promise<{ compacted: boolean; oldSizeBytes: number; newSizeBytes: number }>;
+    checkpoint(): Promise<void>;
+    stats(): Promise<{ totalKeys: number; preKeys: number; sessions: number; senderKeys: number; otherKeys: number; dbStats?: unknown }>;
     clearSession(): Promise<void>;
     close(): Promise<void>;
     getLockStatus(): { locked: boolean; lockPath: string };
@@ -139,6 +148,59 @@ async function acquireProcessLock(lockPath: string) {
     return { lockPath, release: async () => { await unlink(lockPath).catch(() => {}); } };
 }
 
+async function maybeCompactRoseDB(dbPath: string, thresholdBytes = 10 * 1024 * 1024, maxPreKeys = 100): Promise<{ compacted: boolean; oldSizeBytes: number; newSizeBytes: number }> {
+    try {
+        const dataFile = join(dbPath, 'data.rdb');
+        const st = await stat(dataFile).catch(() => null);
+        if (!st || st.size < thresholdBytes) {
+            return { compacted: false, oldSizeBytes: st ? st.size : 0, newSizeBytes: st ? st.size : 0 };
+        }
+
+        const oldSizeBytes = st.size;
+        const tmpPath = `${dbPath}.compact.${Date.now()}`;
+        const dbOld = new Database(dbPath);
+        const dbNew = new Database(tmpPath, { sync_on_commit: true });
+
+        const entries = dbOld.scan('', '\uffff', 500000);
+        const preKeys: typeof entries = [];
+        const otherKeys: typeof entries = [];
+
+        for (const e of entries) {
+            if (e.key.includes(':key:pre-key:')) {
+                preKeys.push(e);
+            } else {
+                otherKeys.push(e);
+            }
+        }
+
+        preKeys.sort((a, b) => {
+            const idA = parseInt(a.key.split(':').pop() || '0', 10) || 0;
+            const idB = parseInt(b.key.split(':').pop() || '0', 10) || 0;
+            return idB - idA;
+        });
+
+        const keptPreKeys = preKeys.slice(0, maxPreKeys);
+        const allKept = [...otherKeys, ...keptPreKeys];
+
+        dbNew.batch(allKept.map(e => ({ op: 'put', key: e.key, value: e.value })));
+        if (typeof dbNew.checkpoint === 'function') dbNew.checkpoint();
+
+        dbOld.close();
+        dbNew.close();
+
+        const backupPath = `${dbPath}.old.${Date.now()}`;
+        await rename(dbPath, backupPath);
+        await rename(tmpPath, dbPath);
+        await rm(backupPath, { recursive: true, force: true }).catch(() => {});
+
+        const newSt = await stat(dataFile).catch(() => null);
+        const newSizeBytes = newSt ? newSt.size : 0;
+        return { compacted: true, oldSizeBytes, newSizeBytes };
+    } catch {
+        return { compacted: false, oldSizeBytes: 0, newSizeBytes: 0 };
+    }
+}
+
 async function openRoseDB(dbPath: string, dbOptions?: Record<string, unknown>): Promise<Database> {
     if (openDatabases.has(dbPath)) {
         return openDatabases.get(dbPath)!;
@@ -163,20 +225,30 @@ export const useRoseDBAuthState = async (options: RoseDBAuthStateOptions): Promi
         encryptionKey,
         lockFilePath,
         backupIntervalMs = 0,
-        backupDir
+        backupDir,
+        autoPrune = true,
+        maxPreKeys = 100,
+        checkpointIntervalOps = 50,
+        autoCompact = true,
+        compactThresholdBytes = 10 * 1024 * 1024
     } = options || ({} as RoseDBAuthStateOptions);
 
     if (!sessionId || typeof sessionId !== 'string') throw new Error('sessionId must be a non-empty string');
     if (!ownerId || typeof ownerId !== 'string') throw new Error('ownerId must be a non-empty string');
 
-    const salt = `baileys-rosedb:${sessionId}:${ownerId}`;
-    let masterKey = normalizeMasterKey(encryptionKey, salt);
-    const db = externalDb || (await openRoseDB(dbPath, dbOptions));
-    const ownsDb = !externalDb;
-
     const lockPath = lockFilePath || join(dbPath ? dirname(dbPath) : os.tmpdir(), `.${sessionId}.lock`);
     const lockHandle = await acquireProcessLock(lockPath);
     const mutex = getSessionMutex(`${dbPath || 'external'}:${sessionId}`);
+    const ownsDb = !externalDb;
+
+    if (ownsDb && autoCompact) {
+        await maybeCompactRoseDB(dbPath, compactThresholdBytes, maxPreKeys);
+    }
+
+    const salt = `baileys-rosedb:${sessionId}:${ownerId}`;
+    let masterKey = normalizeMasterKey(encryptionKey, salt);
+    const db = externalDb || (await openRoseDB(dbPath, dbOptions));
+    let opsSinceLastCheckpoint = 0;
 
     const prefix = `s:${sessionId}:`;
     const metaKey = `${prefix}meta`;
@@ -247,6 +319,10 @@ export const useRoseDBAuthState = async (options: RoseDBAuthStateOptions): Promi
                 { op: 'put', key: metaKey, value: JSON.stringify(meta) },
                 { op: 'put', key: credsKey, value: encryptPayload(creds, masterKey, buildAad(credsKey)) }
             ]);
+            if (typeof db.checkpoint === 'function') {
+                try { db.checkpoint(); } catch {}
+                opsSinceLastCheckpoint = 0;
+            }
         });
     };
 
@@ -296,7 +372,9 @@ export const useRoseDBAuthState = async (options: RoseDBAuthStateOptions): Promi
             return mutex.runExclusive(async () => {
                 verifyOwnerAndMeta();
                 const ops: { op: 'put' | 'delete'; key: string; value?: string }[] = [];
+                let hasPreKeyUpdates = false;
                 for (const category in data) {
+                    if (category === 'pre-key') hasPreKeyUpdates = true;
                     for (const id in data[category]) {
                         const value = data[category][id];
                         const dbKey = `${keyPrefix}${category}:${id}`;
@@ -310,7 +388,41 @@ export const useRoseDBAuthState = async (options: RoseDBAuthStateOptions): Promi
                         }
                     }
                 }
-                if (ops.length > 0) db.batch(ops);
+                if (ops.length > 0) {
+                    db.batch(ops);
+                    opsSinceLastCheckpoint += ops.length;
+                }
+
+                if (autoPrune && hasPreKeyUpdates) {
+                    const preKeyPrefix = `${keyPrefix}pre-key:`;
+                    const preKeyEnd = `${keyPrefix}pre-key;`;
+                    const preKeyEntries = db.scan(preKeyPrefix, preKeyEnd, 100000);
+                    if (preKeyEntries.length > maxPreKeys + 20) {
+                        preKeyEntries.sort((a, b) => {
+                            const idA = parseInt(a.key.slice(preKeyPrefix.length), 10) || 0;
+                            const idB = parseInt(b.key.slice(preKeyPrefix.length), 10) || 0;
+                            return idB - idA;
+                        });
+                        const toDelete = preKeyEntries.slice(maxPreKeys);
+                        if (toDelete.length > 0) {
+                            db.batch(toDelete.map(e => ({ op: 'delete' as const, key: e.key })));
+                            for (const e of toDelete) {
+                                keyCache.delete(e.key);
+                            }
+                        }
+                        if (typeof db.checkpoint === 'function') {
+                            try { db.checkpoint(); } catch {}
+                            opsSinceLastCheckpoint = 0;
+                        }
+                    }
+                }
+
+                if (opsSinceLastCheckpoint >= checkpointIntervalOps) {
+                    if (typeof db.checkpoint === 'function') {
+                        try { db.checkpoint(); } catch {}
+                        opsSinceLastCheckpoint = 0;
+                    }
+                }
             });
         },
         clear: async () => {
@@ -436,12 +548,102 @@ export const useRoseDBAuthState = async (options: RoseDBAuthStateOptions): Promi
         await close();
     };
 
+    const prune = async (opts?: { maxPreKeys?: number }) => {
+        const targetMax = typeof opts?.maxPreKeys === 'number' ? opts.maxPreKeys : maxPreKeys;
+        return mutex.runExclusive(async () => {
+            verifyOwnerAndMeta();
+            const preKeyPrefix = `${keyPrefix}pre-key:`;
+            const preKeyEnd = `${keyPrefix}pre-key;`;
+            const entries = db.scan(preKeyPrefix, preKeyEnd, 100000);
+            if (entries.length > targetMax) {
+                entries.sort((a, b) => {
+                    const idA = parseInt(a.key.slice(preKeyPrefix.length), 10) || 0;
+                    const idB = parseInt(b.key.slice(preKeyPrefix.length), 10) || 0;
+                    return idB - idA;
+                });
+                const toDelete = entries.slice(targetMax);
+                if (toDelete.length > 0) {
+                    db.batch(toDelete.map(e => ({ op: 'delete' as const, key: e.key })));
+                    for (const e of toDelete) {
+                        keyCache.delete(e.key);
+                    }
+                }
+                if (typeof db.checkpoint === 'function') {
+                    try { db.checkpoint(); } catch {}
+                    opsSinceLastCheckpoint = 0;
+                }
+                return { prunedPreKeys: toDelete.length, remainingPreKeys: targetMax };
+            }
+            if (typeof db.checkpoint === 'function') {
+                try { db.checkpoint(); } catch {}
+                opsSinceLastCheckpoint = 0;
+            }
+            return { prunedPreKeys: 0, remainingPreKeys: entries.length };
+        });
+    };
+
+    const checkpoint = async () => {
+        return mutex.runExclusive(async () => {
+            if (typeof db.checkpoint === 'function') {
+                try { db.checkpoint(); } catch {}
+                opsSinceLastCheckpoint = 0;
+            }
+        });
+    };
+
+    const stats = async () => {
+        return mutex.runExclusive(async () => {
+            verifyOwnerAndMeta();
+            const allEntries = db.scan(keyPrefix, keyEnd, 500000);
+            let preKeys = 0;
+            let sessions = 0;
+            let senderKeys = 0;
+            let otherKeys = 0;
+            for (const e of allEntries) {
+                const sub = e.key.slice(keyPrefix.length);
+                if (sub.startsWith('pre-key:')) preKeys++;
+                else if (sub.startsWith('session:')) sessions++;
+                else if (sub.startsWith('sender-key:')) senderKeys++;
+                else otherKeys++;
+            }
+            return {
+                totalKeys: allEntries.length,
+                preKeys,
+                sessions,
+                senderKeys,
+                otherKeys,
+                dbStats: typeof db.stats === 'function' ? db.stats() : undefined
+            };
+        });
+    };
+
+    const compact = async (threshold = 0) => {
+        return mutex.runExclusive(async () => {
+            if (!ownsDb) return { compacted: false, oldSizeBytes: 0, newSizeBytes: 0 };
+            openDatabases.delete(dbPath);
+            if (typeof db.close === 'function') db.close();
+            const res = await maybeCompactRoseDB(dbPath, threshold, maxPreKeys);
+            const reOpened = await openRoseDB(dbPath, dbOptions);
+            Object.assign(db, reOpened);
+            keyCache.clear();
+            return res;
+        });
+    };
+
+    if (autoPrune) {
+        prune({ maxPreKeys }).catch(() => {});
+    }
+
     const security: RoseDBAuthSecurity = {
         createEncryptedBackup,
         restoreEncryptedBackup,
         rotateEncryptionKey,
         verifyIntegrity,
         verifyFingerprint,
+        prune,
+        compact,
+        checkpoint,
+        stats,
         clearSession,
         close,
         getLockStatus: () => ({ locked: true, lockPath })
@@ -449,7 +651,7 @@ export const useRoseDBAuthState = async (options: RoseDBAuthStateOptions): Promi
     const state: AuthenticationState = { creds, keys };
     Object.defineProperty(state, Symbol.for('baileys.authSecurity'), { value: security, enumerable: false });
 
-    return { state, saveCreds, security };
+    return { state, saveCreds, security, prune, compact, checkpoint, stats };
 };
 
 (globalThis as any).useRoseDBAuthState ??= useRoseDBAuthState;

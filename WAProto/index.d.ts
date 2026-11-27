@@ -5278,6 +5278,7 @@ export namespace proto {
         pollCreationMessageV5?: (proto.Message.IPollCreationMessage|null);
         newsletterFollowerInviteMessageV2?: (proto.Message.INewsletterFollowerInviteMessage|null);
         pollResultSnapshotMessageV3?: (proto.Message.IPollResultSnapshotMessage|null);
+        musicMessage?: (proto.Message.IMusicMessage|null);
     }
 
     class Message implements IMessage {
@@ -5377,6 +5378,7 @@ export namespace proto {
         public pollCreationMessageV5?: (proto.Message.IPollCreationMessage|null);
         public newsletterFollowerInviteMessageV2?: (proto.Message.INewsletterFollowerInviteMessage|null);
         public pollResultSnapshotMessageV3?: (proto.Message.IPollResultSnapshotMessage|null);
+        public musicMessage?: (proto.Message.IMusicMessage|null);
         public static create(properties?: proto.IMessage): proto.Message;
         public static encode(m: proto.IMessage, w?: $protobuf.Writer): $protobuf.Writer;
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message;
@@ -5387,6 +5389,75 @@ export namespace proto {
     }
 
     namespace Message {
+
+        interface IMusicMessage {
+            embeddedMusic?: (proto.IEmbeddedMusic|null);
+            songUri?: (string|null);
+            artworkUri?: (string|null);
+            style?: (number|null);
+            contextInfo?: (proto.IContextInfo|null);
+            lyrics?: (proto.Message.MusicMessage.ILyrics|null);
+        }
+
+        class MusicMessage implements IMusicMessage {
+            constructor(p?: proto.Message.IMusicMessage);
+            public embeddedMusic?: (proto.IEmbeddedMusic|null);
+            public songUri?: (string|null);
+            public artworkUri?: (string|null);
+            public style?: (number|null);
+            public contextInfo?: (proto.IContextInfo|null);
+            public lyrics?: (proto.Message.MusicMessage.ILyrics|null);
+            public static create(properties?: proto.Message.IMusicMessage): proto.Message.MusicMessage;
+            public static encode(m: proto.Message.IMusicMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.MusicMessage;
+            public static fromObject(d: { [k: string]: any }): proto.Message.MusicMessage;
+            public static toObject(m: proto.Message.MusicMessage, o?: $protobuf.IConversionOptions): { [k: string]: any };
+            public toJSON(): { [k: string]: any };
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        namespace MusicMessage {
+            interface ILyrics {
+                lines?: (proto.Message.MusicMessage.Lyrics.ILine[]|null);
+            }
+
+            class Lyrics implements ILyrics {
+                constructor(p?: proto.Message.MusicMessage.ILyrics);
+                public lines?: (proto.Message.MusicMessage.Lyrics.ILine[]|null);
+                public static create(properties?: proto.Message.MusicMessage.ILyrics): proto.Message.MusicMessage.Lyrics;
+                public static encode(m: proto.Message.MusicMessage.ILyrics, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.MusicMessage.Lyrics;
+                public static fromObject(d: { [k: string]: any }): proto.Message.MusicMessage.Lyrics;
+                public static toObject(m: proto.Message.MusicMessage.Lyrics, o?: $protobuf.IConversionOptions): { [k: string]: any };
+                public toJSON(): { [k: string]: any };
+                public static getTypeUrl(typeUrlPrefix?: string): string;
+            }
+
+            namespace Lyrics {
+                interface ILine {
+                    startTimeInMs?: (number|Long|null);
+                    endTimeInMs?: (number|Long|null);
+                    text?: (string|null);
+                }
+
+                class Line implements ILine {
+                    constructor(p?: proto.Message.MusicMessage.Lyrics.ILine);
+                    public startTimeInMs?: (number|Long|null);
+                    public endTimeInMs?: (number|Long|null);
+                    public text?: (string|null);
+                    public _startTimeInMs?: "startTimeInMs";
+                    public _endTimeInMs?: "endTimeInMs";
+                    public _text?: "text";
+                    public static create(properties?: proto.Message.MusicMessage.Lyrics.ILine): proto.Message.MusicMessage.Lyrics.Line;
+                    public static encode(m: proto.Message.MusicMessage.Lyrics.ILine, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.MusicMessage.Lyrics.Line;
+                    public static fromObject(d: { [k: string]: any }): proto.Message.MusicMessage.Lyrics.Line;
+                    public static toObject(m: proto.Message.MusicMessage.Lyrics.Line, o?: $protobuf.IConversionOptions): { [k: string]: any };
+                    public toJSON(): { [k: string]: any };
+                    public static getTypeUrl(typeUrlPrefix?: string): string;
+                }
+            }
+        }
 
         interface IAlbumMessage {
             expectedImageCount?: (number|null);

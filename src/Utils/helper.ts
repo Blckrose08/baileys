@@ -6,6 +6,13 @@ import { generateMessageIDV2, unixTimestampSeconds, delay } from './generics.js'
 import { getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET, STORIES_JID } from '../WABinary/index.js'
 import { getUrlInfo } from './link-preview.js'
 import crypto from 'crypto'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+
+const execFileAsync = promisify(execFile)
 const generateWaveform = async (audio) => getAudioWaveform(audio).catch(() => undefined);
 
 const isJidGroup = (jid) => jid?.endsWith('@g.us')
@@ -144,14 +151,21 @@ export default function makeHelper(conn) {
           return await conn.newsletterDeleteMessage(jid, serverId);
         }
       }
-      const mediaKey = ['image', 'video', 'audio', 'sticker', 'document'].find(k => k in content);
-      if (mediaKey) {
+      if (content.ptv && typeof content.ptv !== 'boolean' && !content.video) {
+        content.video = content.ptv;
+        content.ptv = true;
+      }
+      const isPtv = Boolean(content.ptv);
+      const mediaKey = ['image', 'video', 'ptv', 'audio', 'sticker', 'document'].find(k => k in content);
+      if (mediaKey || isPtv) {
         try {
           const prepared = await prepareWAMessageMedia(content, { upload: conn.waUploadToServer, jid });
-          const mediaMsg = prepared[`${mediaKey}Message`];
+          const mediaMsg = (isPtv || mediaKey === 'ptv')
+            ? (prepared.ptvMessage || prepared.videoMessage)
+            : prepared[`${mediaKey}Message`];
 
           if (mediaMsg) {
-            if (content.caption) mediaMsg.caption = content.caption;
+            if (content.caption && !isPtv && mediaKey !== 'ptv') mediaMsg.caption = content.caption;
             if (mediaKey === 'audio') {
               if (content.ptt !== undefined) mediaMsg.ptt = content.ptt;
               if (content.waveform) mediaMsg.waveform = content.waveform;
@@ -169,8 +183,9 @@ export default function makeHelper(conn) {
             }
             if (mediaKey === 'document' && (content.fileName || content.filename)) mediaMsg.fileName = content.fileName || content.filename;
 
+            const targetProtoKey = (isPtv || mediaKey === 'ptv') ? 'ptvMessage' : `${mediaKey}Message`;
             const fullProto = {
-              [`${mediaKey}Message`]: mediaMsg
+              [targetProtoKey]: mediaMsg
             };
 
             const encoded = proto.Message.encode(fullProto).finish();
@@ -988,9 +1003,11 @@ export default function makeHelper(conn) {
     }
     return album
   }
-  conn.sendEvent = (jid, content, options) => conn.sendMessage(jid, { event: content }, options)
-  conn.sendStickerPack = (jid, content, options) => conn.sendMessage(jid, { stickerPack: content }, options)
-  conn.sendAIRich = (jid, builder, options) => builder.send(jid, options)
+  conn.sendEvent = (jid: string, content: any, options: any) => conn.sendMessage(jid, { event: content }, options)
+  conn.sendStickerPack = (jid: string, content: any, options: any) => conn.sendMessage(jid, { stickerPack: content }, options)
+  conn.sendAIRich = (jid: string, builder: any, options: any) => builder.send(jid, options)
+
+
 
   conn.sendStatusMentions = async (content, jids = []) => {
     const userJid = jidNormalizedUser(conn.user?.id || '')

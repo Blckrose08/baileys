@@ -35561,6 +35561,7 @@ export const proto = $root.proto = (() => {
         Message.prototype.pollCreationMessageV5 = null;
         Message.prototype.newsletterFollowerInviteMessageV2 = null;
         Message.prototype.pollResultSnapshotMessageV3 = null;
+        Message.prototype.musicMessage = null;
 
         let $oneOfFields;
 
@@ -36134,6 +36135,12 @@ export const proto = $root.proto = (() => {
             set: $util.oneOfSetter($oneOfFields)
         });
 
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(Message.prototype, "_musicMessage", {
+            get: $util.oneOfGetter($oneOfFields = ["musicMessage"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
         Message.create = function create(properties) {
             return new Message(properties);
         };
@@ -36331,6 +36338,8 @@ export const proto = $root.proto = (() => {
                 $root.proto.Message.NewsletterFollowerInviteMessage.encode(m.newsletterFollowerInviteMessageV2, w.uint32(906).fork()).ldelim();
             if (m.pollResultSnapshotMessageV3 != null && Object.hasOwnProperty.call(m, "pollResultSnapshotMessageV3"))
                 $root.proto.Message.PollResultSnapshotMessage.encode(m.pollResultSnapshotMessageV3, w.uint32(914).fork()).ldelim();
+            if (m.musicMessage != null && Object.hasOwnProperty.call(m, "musicMessage"))
+                $root.proto.Message.MusicMessage.encode(m.musicMessage, w.uint32(1034).fork()).ldelim();
             return w;
         };
 
@@ -36721,6 +36730,10 @@ export const proto = $root.proto = (() => {
                     }
                 case 114: {
                         m.pollResultSnapshotMessageV3 = $root.proto.Message.PollResultSnapshotMessage.decode(r, r.uint32());
+                        break;
+                    }
+                case 129: {
+                        m.musicMessage = $root.proto.Message.MusicMessage.decode(r, r.uint32());
                         break;
                     }
                 default:
@@ -37208,6 +37221,11 @@ export const proto = $root.proto = (() => {
                     throw TypeError(".proto.Message.pollResultSnapshotMessageV3: object expected");
                 m.pollResultSnapshotMessageV3 = $root.proto.Message.PollResultSnapshotMessage.fromObject(d.pollResultSnapshotMessageV3);
             }
+            if (d.musicMessage != null) {
+                if (typeof d.musicMessage !== "object")
+                    throw TypeError(".proto.Message.musicMessage: object expected");
+                m.musicMessage = $root.proto.Message.MusicMessage.fromObject(d.musicMessage);
+            }
             return m;
         };
 
@@ -37690,6 +37708,11 @@ export const proto = $root.proto = (() => {
                 if (o.oneofs)
                     d._pollResultSnapshotMessageV3 = "pollResultSnapshotMessageV3";
             }
+            if (m.musicMessage != null && m.hasOwnProperty("musicMessage")) {
+                d.musicMessage = $root.proto.Message.MusicMessage.toObject(m.musicMessage, o);
+                if (o.oneofs)
+                    d._musicMessage = "musicMessage";
+            }
             return d;
         };
 
@@ -37703,6 +37726,447 @@ export const proto = $root.proto = (() => {
             }
             return typeUrlPrefix + "/proto.Message";
         };
+
+        Message.MusicMessage = (function() {
+
+            function MusicMessage(p) {
+                if (p)
+                    for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                        if (p[ks[i]] != null && ks[i] !== "__proto__")
+                            this[ks[i]] = p[ks[i]];
+            }
+
+            MusicMessage.prototype.embeddedMusic = null;
+            MusicMessage.prototype.songUri = null;
+            MusicMessage.prototype.artworkUri = null;
+            MusicMessage.prototype.style = null;
+            MusicMessage.prototype.contextInfo = null;
+            MusicMessage.prototype.lyrics = null;
+
+            let $oneOfFields;
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(MusicMessage.prototype, "_embeddedMusic", {
+                get: $util.oneOfGetter($oneOfFields = ["embeddedMusic"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(MusicMessage.prototype, "_songUri", {
+                get: $util.oneOfGetter($oneOfFields = ["songUri"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(MusicMessage.prototype, "_artworkUri", {
+                get: $util.oneOfGetter($oneOfFields = ["artworkUri"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(MusicMessage.prototype, "_style", {
+                get: $util.oneOfGetter($oneOfFields = ["style"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(MusicMessage.prototype, "_contextInfo", {
+                get: $util.oneOfGetter($oneOfFields = ["contextInfo"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(MusicMessage.prototype, "_lyrics", {
+                get: $util.oneOfGetter($oneOfFields = ["lyrics"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            MusicMessage.create = function create(properties) {
+                return new MusicMessage(properties);
+            };
+
+            MusicMessage.encode = function encode(m, w) {
+                if (!w)
+                    w = $Writer.create();
+                if (m.embeddedMusic != null && Object.hasOwnProperty.call(m, "embeddedMusic"))
+                    $root.proto.EmbeddedMusic.encode(m.embeddedMusic, w.uint32(10).fork()).ldelim();
+                if (m.songUri != null && Object.hasOwnProperty.call(m, "songUri"))
+                    w.uint32(18).string(m.songUri);
+                if (m.artworkUri != null && Object.hasOwnProperty.call(m, "artworkUri"))
+                    w.uint32(26).string(m.artworkUri);
+                if (m.style != null && Object.hasOwnProperty.call(m, "style"))
+                    w.uint32(32).int32(m.style);
+                if (m.contextInfo != null && Object.hasOwnProperty.call(m, "contextInfo"))
+                    $root.proto.ContextInfo.encode(m.contextInfo, w.uint32(42).fork()).ldelim();
+                if (m.lyrics != null && Object.hasOwnProperty.call(m, "lyrics"))
+                    $root.proto.Message.MusicMessage.Lyrics.encode(m.lyrics, w.uint32(50).fork()).ldelim();
+                return w;
+            };
+
+            MusicMessage.decode = function decode(r, l, e) {
+                if (!(r instanceof $Reader))
+                    r = $Reader.create(r);
+                var c = l === undefined ? r.len : r.pos + l, m = new $root.proto.Message.MusicMessage();
+                while (r.pos < c) {
+                    var t = r.uint32();
+                    if (t === e)
+                        break;
+                    switch (t >>> 3) {
+                    case 1: {
+                            m.embeddedMusic = $root.proto.EmbeddedMusic.decode(r, r.uint32());
+                            break;
+                        }
+                    case 2: {
+                            m.songUri = r.string();
+                            break;
+                        }
+                    case 3: {
+                            m.artworkUri = r.string();
+                            break;
+                        }
+                    case 4: {
+                            m.style = r.int32();
+                            break;
+                        }
+                    case 5: {
+                            m.contextInfo = $root.proto.ContextInfo.decode(r, r.uint32());
+                            break;
+                        }
+                    case 6: {
+                            m.lyrics = $root.proto.Message.MusicMessage.Lyrics.decode(r, r.uint32());
+                            break;
+                        }
+                    default:
+                        r.skipType(t & 7);
+                        break;
+                    }
+                }
+                return m;
+            };
+
+            MusicMessage.fromObject = function fromObject(d) {
+                if (d instanceof $root.proto.Message.MusicMessage)
+                    return d;
+                var m = new $root.proto.Message.MusicMessage();
+                if (d.embeddedMusic != null) {
+                    if (typeof d.embeddedMusic !== "object")
+                        throw TypeError(".proto.Message.MusicMessage.embeddedMusic: object expected");
+                    m.embeddedMusic = $root.proto.EmbeddedMusic.fromObject(d.embeddedMusic);
+                }
+                if (d.songUri != null) {
+                    m.songUri = String(d.songUri);
+                }
+                if (d.artworkUri != null) {
+                    m.artworkUri = String(d.artworkUri);
+                }
+                if (d.style != null) {
+                    m.style = d.style | 0;
+                }
+                if (d.contextInfo != null) {
+                    if (typeof d.contextInfo !== "object")
+                        throw TypeError(".proto.Message.MusicMessage.contextInfo: object expected");
+                    m.contextInfo = $root.proto.ContextInfo.fromObject(d.contextInfo);
+                }
+                if (d.lyrics != null) {
+                    if (typeof d.lyrics !== "object")
+                        throw TypeError(".proto.Message.MusicMessage.lyrics: object expected");
+                    m.lyrics = $root.proto.Message.MusicMessage.Lyrics.fromObject(d.lyrics);
+                }
+                return m;
+            };
+
+            MusicMessage.toObject = function toObject(m, o) {
+                if (!o)
+                    o = {};
+                var d = {};
+                if (m.embeddedMusic != null && m.hasOwnProperty("embeddedMusic")) {
+                    d.embeddedMusic = $root.proto.EmbeddedMusic.toObject(m.embeddedMusic, o);
+                    if (o.oneofs)
+                        d._embeddedMusic = "embeddedMusic";
+                }
+                if (m.songUri != null && m.hasOwnProperty("songUri")) {
+                    d.songUri = m.songUri;
+                    if (o.oneofs)
+                        d._songUri = "songUri";
+                }
+                if (m.artworkUri != null && m.hasOwnProperty("artworkUri")) {
+                    d.artworkUri = m.artworkUri;
+                    if (o.oneofs)
+                        d._artworkUri = "artworkUri";
+                }
+                if (m.style != null && m.hasOwnProperty("style")) {
+                    d.style = m.style;
+                    if (o.oneofs)
+                        d._style = "style";
+                }
+                if (m.contextInfo != null && m.hasOwnProperty("contextInfo")) {
+                    d.contextInfo = $root.proto.ContextInfo.toObject(m.contextInfo, o);
+                    if (o.oneofs)
+                        d._contextInfo = "contextInfo";
+                }
+                if (m.lyrics != null && m.hasOwnProperty("lyrics")) {
+                    d.lyrics = $root.proto.Message.MusicMessage.Lyrics.toObject(m.lyrics, o);
+                    if (o.oneofs)
+                        d._lyrics = "lyrics";
+                }
+                return d;
+            };
+
+            MusicMessage.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            MusicMessage.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/proto.Message.MusicMessage";
+            };
+
+            MusicMessage.Lyrics = (function() {
+
+                function Lyrics(p) {
+                    if (p)
+                        for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                            if (p[ks[i]] != null && ks[i] !== "__proto__")
+                                this[ks[i]] = p[ks[i]];
+                }
+
+                Lyrics.prototype.lines = $util.emptyArray;
+
+                Lyrics.create = function create(properties) {
+                    return new Lyrics(properties);
+                };
+
+                Lyrics.encode = function encode(m, w) {
+                    if (!w)
+                        w = $Writer.create();
+                    if (m.lines != null && m.lines.length) {
+                        for (var i = 0; i < m.lines.length; ++i)
+                            $root.proto.Message.MusicMessage.Lyrics.Line.encode(m.lines[i], w.uint32(10).fork()).ldelim();
+                    }
+                    return w;
+                };
+
+                Lyrics.decode = function decode(r, l, e) {
+                    if (!(r instanceof $Reader))
+                        r = $Reader.create(r);
+                    var c = l === undefined ? r.len : r.pos + l, m = new $root.proto.Message.MusicMessage.Lyrics();
+                    while (r.pos < c) {
+                        var t = r.uint32();
+                        if (t === e)
+                            break;
+                        switch (t >>> 3) {
+                        case 1: {
+                                if (!(m.lines && m.lines.length))
+                                    m.lines = [];
+                                m.lines.push($root.proto.Message.MusicMessage.Lyrics.Line.decode(r, r.uint32()));
+                                break;
+                            }
+                        default:
+                            r.skipType(t & 7);
+                            break;
+                        }
+                    }
+                    return m;
+                };
+
+                Lyrics.fromObject = function fromObject(d) {
+                    if (d instanceof $root.proto.Message.MusicMessage.Lyrics)
+                        return d;
+                    var m = new $root.proto.Message.MusicMessage.Lyrics();
+                    if (d.lines) {
+                        if (!Array.isArray(d.lines))
+                            throw TypeError(".proto.Message.MusicMessage.Lyrics.lines: array expected");
+                        m.lines = [];
+                        for (var i = 0; i < d.lines.length; ++i) {
+                            if (typeof d.lines[i] !== "object")
+                                throw TypeError(".proto.Message.MusicMessage.Lyrics.lines: object expected");
+                            m.lines[i] = $root.proto.Message.MusicMessage.Lyrics.Line.fromObject(d.lines[i]);
+                        }
+                    }
+                    return m;
+                };
+
+                Lyrics.toObject = function toObject(m, o) {
+                    if (!o)
+                        o = {};
+                    var d = {};
+                    if (o.arrays || o.defaults) {
+                        d.lines = [];
+                    }
+                    if (m.lines && m.lines.length) {
+                        d.lines = [];
+                        for (var j = 0; j < m.lines.length; ++j) {
+                            d.lines[j] = $root.proto.Message.MusicMessage.Lyrics.Line.toObject(m.lines[j], o);
+                        }
+                    }
+                    return d;
+                };
+
+                Lyrics.prototype.toJSON = function toJSON() {
+                    return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+                };
+
+                Lyrics.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                    if (typeUrlPrefix === undefined) {
+                        typeUrlPrefix = "type.googleapis.com";
+                    }
+                    return typeUrlPrefix + "/proto.Message.MusicMessage.Lyrics";
+                };
+
+                Lyrics.Line = (function() {
+
+                    function Line(p) {
+                        if (p)
+                            for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                                if (p[ks[i]] != null && ks[i] !== "__proto__")
+                                    this[ks[i]] = p[ks[i]];
+                    }
+
+                    Line.prototype.startTimeInMs = null;
+                    Line.prototype.endTimeInMs = null;
+                    Line.prototype.text = null;
+
+                    let $oneOfFields;
+
+                    Object.defineProperty(Line.prototype, "_startTimeInMs", {
+                        get: $util.oneOfGetter($oneOfFields = ["startTimeInMs"]),
+                        set: $util.oneOfSetter($oneOfFields)
+                    });
+
+                    Object.defineProperty(Line.prototype, "_endTimeInMs", {
+                        get: $util.oneOfGetter($oneOfFields = ["endTimeInMs"]),
+                        set: $util.oneOfSetter($oneOfFields)
+                    });
+
+                    Object.defineProperty(Line.prototype, "_text", {
+                        get: $util.oneOfGetter($oneOfFields = ["text"]),
+                        set: $util.oneOfSetter($oneOfFields)
+                    });
+
+                    Line.create = function create(properties) {
+                        return new Line(properties);
+                    };
+
+                    Line.encode = function encode(m, w) {
+                        if (!w)
+                            w = $Writer.create();
+                        if (m.startTimeInMs != null && Object.hasOwnProperty.call(m, "startTimeInMs"))
+                            w.uint32(8).int64(m.startTimeInMs);
+                        if (m.endTimeInMs != null && Object.hasOwnProperty.call(m, "endTimeInMs"))
+                            w.uint32(16).int64(m.endTimeInMs);
+                        if (m.text != null && Object.hasOwnProperty.call(m, "text"))
+                            w.uint32(26).string(m.text);
+                        return w;
+                    };
+
+                    Line.decode = function decode(r, l, e) {
+                        if (!(r instanceof $Reader))
+                            r = $Reader.create(r);
+                        var c = l === undefined ? r.len : r.pos + l, m = new $root.proto.Message.MusicMessage.Lyrics.Line();
+                        while (r.pos < c) {
+                            var t = r.uint32();
+                            if (t === e)
+                                break;
+                            switch (t >>> 3) {
+                            case 1: {
+                                    m.startTimeInMs = r.int64();
+                                    break;
+                                }
+                            case 2: {
+                                    m.endTimeInMs = r.int64();
+                                    break;
+                                }
+                            case 3: {
+                                    m.text = r.string();
+                                    break;
+                                }
+                            default:
+                                r.skipType(t & 7);
+                                break;
+                            }
+                        }
+                        return m;
+                    };
+
+                    Line.fromObject = function fromObject(d) {
+                        if (d instanceof $root.proto.Message.MusicMessage.Lyrics.Line)
+                            return d;
+                        var m = new $root.proto.Message.MusicMessage.Lyrics.Line();
+                        if (d.startTimeInMs != null) {
+                            if ($util.Long)
+                                (m.startTimeInMs = $util.Long.fromValue(d.startTimeInMs)).unsigned = false;
+                            else if (typeof d.startTimeInMs === "string")
+                                m.startTimeInMs = parseInt(d.startTimeInMs, 10);
+                            else if (typeof d.startTimeInMs === "number")
+                                m.startTimeInMs = d.startTimeInMs;
+                            else if (typeof d.startTimeInMs === "object")
+                                m.startTimeInMs = new $util.LongBits(d.startTimeInMs.low >>> 0, d.startTimeInMs.high >>> 0).toNumber(false);
+                        }
+                        if (d.endTimeInMs != null) {
+                            if ($util.Long)
+                                (m.endTimeInMs = $util.Long.fromValue(d.endTimeInMs)).unsigned = false;
+                            else if (typeof d.endTimeInMs === "string")
+                                m.endTimeInMs = parseInt(d.endTimeInMs, 10);
+                            else if (typeof d.endTimeInMs === "number")
+                                m.endTimeInMs = d.endTimeInMs;
+                            else if (typeof d.endTimeInMs === "object")
+                                m.endTimeInMs = new $util.LongBits(d.endTimeInMs.low >>> 0, d.endTimeInMs.high >>> 0).toNumber(false);
+                        }
+                        if (d.text != null) {
+                            m.text = String(d.text);
+                        }
+                        return m;
+                    };
+
+                    Line.toObject = function toObject(m, o) {
+                        if (!o)
+                            o = {};
+                        var d = {};
+                        if (m.startTimeInMs != null && m.hasOwnProperty("startTimeInMs")) {
+                            if (typeof m.startTimeInMs === "number")
+                                d.startTimeInMs = o.longs === String ? String(m.startTimeInMs) : m.startTimeInMs;
+                            else
+                                d.startTimeInMs = o.longs === String ? longToString(m.startTimeInMs, false) : o.longs === Number ? longToNumber(m.startTimeInMs, false) : m.startTimeInMs;
+                            if (o.oneofs)
+                                d._startTimeInMs = "startTimeInMs";
+                        }
+                        if (m.endTimeInMs != null && m.hasOwnProperty("endTimeInMs")) {
+                            if (typeof m.endTimeInMs === "number")
+                                d.endTimeInMs = o.longs === String ? String(m.endTimeInMs) : m.endTimeInMs;
+                            else
+                                d.endTimeInMs = o.longs === String ? longToString(m.endTimeInMs, false) : o.longs === Number ? longToNumber(m.endTimeInMs, false) : m.endTimeInMs;
+                            if (o.oneofs)
+                                d._endTimeInMs = "endTimeInMs";
+                        }
+                        if (m.text != null && m.hasOwnProperty("text")) {
+                            d.text = m.text;
+                            if (o.oneofs)
+                                d._text = "text";
+                        }
+                        return d;
+                    };
+
+                    Line.prototype.toJSON = function toJSON() {
+                        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+                    };
+
+                    Line.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                        if (typeUrlPrefix === undefined) {
+                            typeUrlPrefix = "type.googleapis.com";
+                        }
+                        return typeUrlPrefix + "/proto.Message.MusicMessage.Lyrics.Line";
+                    };
+
+                    return Line;
+                })();
+
+                return Lyrics;
+            })();
+
+            return MusicMessage;
+        })();
 
         Message.AlbumMessage = (function() {
 

@@ -10,6 +10,11 @@ export interface RoseDBAuthStateOptions {
     lockFilePath?: string;
     backupIntervalMs?: number;
     backupDir?: string;
+    autoPrune?: boolean;
+    maxPreKeys?: number;
+    checkpointIntervalOps?: number;
+    autoCompact?: boolean;
+    compactThresholdBytes?: number;
 }
 
 export interface RoseDBAuthSecurity {
@@ -18,6 +23,10 @@ export interface RoseDBAuthSecurity {
     rotateEncryptionKey(newEncryptionKey: string | Buffer): Promise<{ keyVersion: number; rotatedKeys: number }>;
     verifyIntegrity(): Promise<{ ok: boolean; configured: boolean; keyVersion?: number; dbCheck?: unknown; error?: string }>;
     verifyFingerprint(): Promise<{ configured: boolean; matched: boolean; note: string }>;
+    prune(options?: { maxPreKeys?: number }): Promise<{ prunedPreKeys: number; remainingPreKeys: number }>;
+    compact(thresholdBytes?: number): Promise<{ compacted: boolean; oldSizeBytes: number; newSizeBytes: number }>;
+    checkpoint(): Promise<void>;
+    stats(): Promise<{ totalKeys: number; preKeys: number; sessions: number; senderKeys: number; otherKeys: number; dbStats?: unknown }>;
     clearSession(): Promise<void>;
     close(): Promise<void>;
     getLockStatus(): { locked: boolean; lockPath: string };
@@ -29,4 +38,8 @@ export declare const useRoseDBAuthState: (options: RoseDBAuthStateOptions) => Pr
     state: AuthenticationState;
     saveCreds: () => Promise<void>;
     security: RoseDBAuthSecurity;
+    prune: (options?: { maxPreKeys?: number }) => Promise<{ prunedPreKeys: number; remainingPreKeys: number }>;
+    compact: (thresholdBytes?: number) => Promise<{ compacted: boolean; oldSizeBytes: number; newSizeBytes: number }>;
+    checkpoint: () => Promise<void>;
+    stats: () => Promise<{ totalKeys: number; preKeys: number; sessions: number; senderKeys: number; otherKeys: number; dbStats?: unknown }>;
 }>;

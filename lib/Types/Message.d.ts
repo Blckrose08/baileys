@@ -132,6 +132,8 @@ export type AnyMediaMessageContent = (({
     jpegThumbnail?: string;
     /** if set to true, will send as a `video note` */
     ptv?: boolean;
+} & Mentionable & Contextable & WithDimensions) | ({
+    ptv: WAMediaUpload;
 } & Mentionable & Contextable & WithDimensions) | {
     audio: WAMediaUpload;
     /** if set to true, will send as a `voice note` */
