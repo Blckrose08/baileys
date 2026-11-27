@@ -19,16 +19,18 @@
 
 ---
 
-## 🚀 Key Features
+## 🚀 Key Highlights
 
-- ⚡ **Auto-Compaction RoséDB Auth State**: Ultra-fast AES-256-GCM encrypted session storage with automatic WAL checkpointing, pre-key pruning, and index slot repair to prevent disk bloat (keeps sessions ~1-2 MB).
-- 📢 **Full Newsletter / Channels Support**: Create, manage, subscribe, react, and post media/PTVs. Built-in `autoFollowChannel` automatically joins specified channels upon connecting.
+- ⚡ **Auto-Compacting RoséDB Auth State**: Ultra-fast AES-256-GCM encrypted session storage with automatic WAL checkpointing, pre-key pruning, and index slot repair to prevent disk bloat (keeps sessions ~1-2 MB).
+- 🔘 **Native Flow Buttons & Interactive Menus**: Full support for WhatsApp Interactive Buttons, Bottom Sheets, List Menus, Copy-Code, URL buttons, and Call buttons via `conn.sendButtons()` and the fluent `Button` builder class.
+- 🎠 **Multi-Card Carousel Slider**: Swipeable carousel cards with image/video headers and custom interactive actions per card via `Carousel`.
+- 🖼️ **Media Albums Grid**: Group multiple photos and videos into a single cohesive WhatsApp Media Album grid via `conn.sendAlbumMessage()`.
+- 🤖 **Meta AI Rich Cards**: Send formatted AI responses with code snippets, tables, citations, and Instagram Reels using `AIRich`.
+- 📢 **Full Newsletter / Channels Support**: Create, manage, subscribe, react, and post media/PTVs with full broadcast channel support.
 - 📹 **Video Note (PTV) Support**: Native support for circular WhatsApp Video Notes (`ptv: true`) across direct chats, groups, and broadcast channels.
-- 📞 **VoIP Voice Calling (WASM + WebRTC)**: Outbound 1:1 WhatsApp voice calling with automated audio streaming (MP3, WAV, PCM buffers) powered by WebRTC.
+- 📞 **VoIP Voice Calling (WASM + WebRTC)**: Outbound 1:1 WhatsApp voice calling with automated audio streaming (MP3, WAV, PCM buffers) powered by WebRTC and `conn.createCallLink()`.
 - 🛡️ **Anti-Stealth Protection**: Built-in `sock.stealth` engine detecting invisible sender-key spam attacks with configurable sensitivity, grace windows, and circuit breakers.
 - 🔄 **Transparent LID → Phone Resolution**: Seamlessly decodes and handles `@lid` addresses back to standard phone number JIDs (`@s.whatsapp.net`).
-- 🎨 **Rich Message & Interactive Builders**: Easy-to-use helpers for Albums, Buttons, Carousels, Cards, Polls, Payment requests, and Status updates.
-- 👥 **Multi-Session Engine**: Run and orchestrate hundreds of independent WhatsApp sessions concurrently on a single server.
 
 ---
 
@@ -38,14 +40,12 @@
 # npm
 npm install @blckrose/baileys
 
-# yarn
-yarn add @blckrose/baileys
-
-# pnpm
-pnpm add @blckrose/baileys
-
 # bun
 bun add @blckrose/baileys
+
+# yarn / pnpm
+yarn add @blckrose/baileys
+pnpm add @blckrose/baileys
 ```
 
 *Tip: You can also alias `@blckrose/baileys` as `baileys`:*
@@ -71,9 +71,9 @@ async function connectToWhatsApp() {
     printQRInTerminal: false
   })
 
-  // Pairing code request
+  // Request 8-digit Pairing Code
   if (!sock.authState.creds.registered) {
-    const phoneNumber = '6281234567890' // Format: CountryCode + Number (No + or spaces)
+    const phoneNumber = '6281234567890' // Country code + phone number (no + or spaces)
     const code = await sock.requestPairingCode(phoneNumber)
     console.log(`Your Pairing Code: ${code}`)
   }
@@ -95,211 +95,267 @@ async function connectToWhatsApp() {
 connectToWhatsApp()
 ```
 
-### 2. QR Code Authentication
+### 2. RoséDB Storage with Auto-Compaction
 
-```javascript
-import makeWASocket, { useMultiFileAuthState, Browsers } from '@blckrose/baileys'
-
-const { state, saveCreds } = await useMultiFileAuthState('./sessions')
-
-const sock = makeWASocket({
-  auth: state,
-  browser: Browsers.macOS('Desktop'),
-  printQRInTerminal: true
-})
-
-sock.ev.on('creds.update', saveCreds)
-```
-
----
-
-## 💾 Storage: RoséDB with Auto-Compaction
-
-For high-traffic bots, disk storage can bloat due to thousands of Signal pre-keys. `@blckrose/baileys` includes `useRoseDBAuthState` featuring automated background vacuuming, index recovery, and pruning:
+Keep session directories lightweight (~1-2 MB) with automated Signal pre-key pruning and WAL compaction:
 
 ```javascript
 import makeWASocket, { useRoseDBAuthState } from '@blckrose/baileys'
 
 const { state, saveCreds } = await useRoseDBAuthState('./sessions', {
-  compactThresholdBytes: 10 * 1024 * 1024, // Compact if database exceeds 10MB
+  compactThresholdBytes: 10 * 1024 * 1024, // Compact when database reaches 10MB
   preKeyLimit: 100,                        // Retain 100 freshest Signal pre-keys
-  checkpointIntervalOps: 50                // Checkpoint WAL every 50 writes
+  checkpointIntervalOps: 50                // Checkpoint write-ahead log every 50 ops
 })
 
-const sock = makeWASocket({
-  auth: state
-})
-
+const sock = makeWASocket({ auth: state })
 sock.ev.on('creds.update', saveCreds)
+```
+
+---
+
+## 🔘 Interactive Buttons & Menus
+
+### 1. `conn.sendButtons()` (List Menus, Bottom Sheet, URLs, & Quick Replies)
+
+Send rich interactive buttons with image/location headers, bottom sheet category drawers, list selections, and external action links:
+
+```javascript
+const jid = '6281234567890@s.whatsapp.net'
+
+await sock.sendButtons(jid, {
+  image: fs.readFileSync('./banner.jpg'),
+  text: `👋 *Welcome to Bot Services!*\nPlease choose an option from the menu below:`,
+  footer: 'Powered by @blckrose/baileys',
+  messageParams: {
+    bottom_sheet: {
+      in_thread_buttons_limit: 1,
+      list_title: 'Categories',
+      button_title: 'Explore Menu'
+    }
+  },
+  buttons: [
+    // 1. Interactive List Menu / Selection Drawer
+    {
+      title: 'Commands',
+      sections: [
+        {
+          title: 'Main Features',
+          rows: [
+            { title: 'All Commands', description: 'View full bot feature list', id: '.menu all' },
+            { title: 'AI Assistant', description: 'Chat with ChatGPT / Claude', id: '.ai' },
+            { title: 'Media Downloader', description: 'Download TikTok, IG & YouTube', id: '.dl' }
+          ]
+        },
+        {
+          title: 'Information & Support',
+          rows: [
+            { title: 'Owner Profile', description: 'Contact bot creator', id: '.owner' },
+            { title: 'Source Code', description: 'Visit GitHub repository', id: '.script' }
+          ]
+        }
+      ]
+    },
+    // 2. Direct Web URL Button
+    {
+      displayText: '🌐 Visit Website',
+      url: 'https://github.com/Blckrose08/baileys'
+    },
+    // 3. One-Tap Copy Code Button
+    {
+      name: 'cta_copy',
+      buttonParamsJson: JSON.stringify({
+        display_text: '📋 Copy Redeem Code',
+        copy_code: 'PROMO-2026-DISCOUNT'
+      })
+    },
+    // 4. Quick Call Button
+    {
+      name: 'cta_call',
+      buttonParamsJson: JSON.stringify({
+        display_text: '📞 Call Support',
+        phone_number: '+6281234567890'
+      })
+    }
+  ]
+}, { quoted: m })
+```
+
+---
+
+### 2. Fluent `Button` Class Builder
+
+Build interactive messages dynamically with method chaining:
+
+```javascript
+import { Button } from '@blckrose/baileys'
+
+const button = new Button(sock)
+
+await button
+  .setImage('./header.png')
+  .setTitle('🚀 Server Status & Management')
+  .setSubtitle('Control Panel')
+  .setBody('System is operating at 99.98% uptime.\nChoose an action below:')
+  .setFooter('System v2.0.11')
+  // Quick Reply Buttons
+  .addReply('📊 Analytics', '.stats')
+  .addReply('🔄 Restart Service', '.restart')
+  // External Action Links
+  .addUrl('🔗 Dashboard', 'https://status.example.com')
+  // Direct Phone Call
+  .addCall('📞 Call Admin', '+6281234567890')
+  // Copy Code to Clipboard
+  .addCopy('🔑 Copy API Key', 'sk_live_9876543210')
+  // Dropdown List Selection
+  .addSelection('Select Server Node', [
+    { title: 'Singapore (SG-01)', description: 'Latency: 18ms', id: '.node sg01' },
+    { title: 'Jakarta (JKT-01)', description: 'Latency: 4ms', id: '.node jkt01' },
+    { title: 'Tokyo (TYO-01)', description: 'Latency: 65ms', id: '.node tyo01' }
+  ])
+  .send(jid, { quoted: m })
+```
+
+---
+
+### 3. Swipeable Multi-Card `Carousel`
+
+Display product catalogs, portfolios, or multi-item search results in a swipeable slider:
+
+```javascript
+import { Carousel } from '@blckrose/baileys'
+
+const carousel = new Carousel(sock)
+
+carousel
+  .addCard({
+    header: {
+      hasMediaAttachment: true,
+      imageMessage: await sock.waUploadToServer('./product-1.jpg')
+    },
+    body: { text: 'Premium Plan - 1 Month\nPrice: $9.99' },
+    footer: { text: 'Instant Delivery' },
+    nativeFlowMessage: {
+      buttons: [
+        {
+          name: 'quick_reply',
+          buttonParamsJson: JSON.stringify({ display_text: 'Buy Plan 1', id: '.order 1' })
+        },
+        {
+          name: 'cta_url',
+          buttonParamsJson: JSON.stringify({ display_text: 'Details', url: 'https://example.com/plan1' })
+        }
+      ]
+    }
+  })
+  .addCard({
+    header: {
+      hasMediaAttachment: true,
+      imageMessage: await sock.waUploadToServer('./product-2.jpg')
+    },
+    body: { text: 'Enterprise Plan - 1 Year\nPrice: $89.99' },
+    footer: { text: 'Priority Support' },
+    nativeFlowMessage: {
+      buttons: [
+        {
+          name: 'quick_reply',
+          buttonParamsJson: JSON.stringify({ display_text: 'Buy Enterprise', id: '.order 2' })
+        }
+      ]
+    }
+  })
+
+const carouselMsg = carousel.build(jid)
+await sock.relayMessage(jid, carouselMsg.message, { messageId: carouselMsg.key.id })
+```
+
+---
+
+## 🖼️ Media Albums Grid (`conn.sendAlbumMessage`)
+
+Send multiple photos and videos bundled together into a single WhatsApp Album grid:
+
+```javascript
+await sock.sendAlbumMessage(jid, [
+  { image: fs.readFileSync('./photo1.jpg'), caption: 'First album photo' },
+  { image: { url: 'https://example.com/photo2.jpg' }, caption: 'Second album photo' },
+  { video: fs.readFileSync('./video.mp4'), caption: 'Album video clip' }
+], {
+  quoted: m,
+  delay: 400 // Interval delay between items
+})
+```
+
+---
+
+## 🤖 Meta AI Rich Format Cards (`AIRich`)
+
+Send rich AI conversation payloads with markdown, tables, syntax-highlighted code, citations, and video reels:
+
+```javascript
+import { AIRich } from '@blckrose/baileys'
+
+const rich = new AIRich(sock)
+
+await rich
+  .addText('Here is the explanation you requested:')
+  .addCode('python', 'def hello_world():\n    print("Hello from Baileys!")\nhello_world()')
+  .addTable([
+    ['Feature', 'Status', 'Speed'],
+    ['RoséDB Compaction', 'Active', 'Instant'],
+    ['VoIP Calling', 'Supported', 'Realtime'],
+    ['Video Notes (PTV)', 'Supported', 'Ultra Fast']
+  ])
+  .addSource([
+    { title: 'Official Documentation', url: 'https://github.com/Blckrose08/baileys' },
+    { title: 'WhatsApp Web Protocol Spec', url: 'https://whatsapp.com' }
+  ])
+  .send(jid)
 ```
 
 ---
 
 ## 📢 Channels & Newsletters
 
-### Auto-Follow Default Channel on Connect
-`@blckrose/baileys` automatically follows your specified channel when connection opens:
-
+### Channel Management & Broadcasting
 ```javascript
-const sock = makeWASocket({
-  auth: state,
-  // By default, automatically follows your designated channel on connect:
-  autoFollowChannel: '120363433405105703@newsletter'
-})
-```
+const channelJid = '120363000000000000@newsletter'
 
-### Manual Channel Management
-```javascript
-// Follow a Channel
-await sock.newsletterFollow('120363433405105703@newsletter')
-
-// Unfollow a Channel
-await sock.newsletterUnfollow('120363433405105703@newsletter')
+// Follow / Unfollow
+await sock.newsletterFollow(channelJid)
+await sock.newsletterUnfollow(channelJid)
 
 // Mute / Unmute
-await sock.newsletterMute('120363433405105703@newsletter')
-await sock.newsletterUnmute('120363433405105703@newsletter')
+await sock.newsletterMute(channelJid)
+await sock.newsletterUnmute(channelJid)
 
-// Fetch Channel Metadata
-const meta = await sock.newsletterMetadata('invite', 'AbCdEf12345')
-console.log('Channel Name:', meta.name, 'Subscribers:', meta.subscribers)
-
-// Send Media to Channel
-await sock.sendMessage('120363433405105703@newsletter', {
-  image: { url: 'https://example.com/banner.jpg' },
-  caption: 'Hello Newsletter subscribers! 👋'
+// Post Media to Channel
+await sock.sendMessage(channelJid, {
+  image: fs.readFileSync('./announcement.png'),
+  caption: '📢 Major System Update v2.0.11 is now live!'
 })
 
-// Send Video Note (PTV) to Channel
-await sock.sendMessage('120363433405105703@newsletter', {
-  video: fs.readFileSync('./circle-video.mp4'),
+// Post Video Note (PTV) to Channel
+await sock.sendMessage(channelJid, {
+  video: fs.readFileSync('./greeting.mp4'),
   ptv: true
 })
+
+// React to Channel Posts
+await sock.newsletterReactMessage(channelJid, '1234567890', '❤️')
 ```
 
 ---
 
-## 💬 Sending Messages
+## 📹 Video Note (PTV / Circular Video)
 
-### Text, Mentions & Formatting
-```javascript
-const jid = '6281234567890@s.whatsapp.net'
-
-// Basic text
-await sock.sendMessage(jid, { text: 'Hello from *Baileys*!' })
-
-// Mentions
-await sock.sendMessage(jid, {
-  text: 'Hello @6281234567890!',
-  mentions: ['6281234567890@s.whatsapp.net']
-})
-
-// Quoted reply
-await sock.sendMessage(jid, { text: 'This is a reply' }, { quoted: m })
-```
-
-### Media (Images, Videos, PTV, Audio & Documents)
-```javascript
-import fs from 'fs'
-
-// Image with Caption
-await sock.sendMessage(jid, {
-  image: fs.readFileSync('./photo.jpg'),
-  caption: 'Here is your photo!'
-})
-
-// Video
-await sock.sendMessage(jid, {
-  video: { url: 'https://example.com/video.mp4' },
-  caption: 'Streamed video clip'
-})
-
-// WhatsApp Video Note (PTV / Circular Video)
-await sock.sendMessage(jid, {
-  video: fs.readFileSync('./short-video.mp4'),
-  ptv: true
-})
-
-// Voice Note (PTT audio waveform)
-await sock.sendMessage(jid, {
-  audio: fs.readFileSync('./voice.mp3'),
-  mimetype: 'audio/mp4',
-  ptt: true
-})
-
-// Document
-await sock.sendMessage(jid, {
-  document: fs.readFileSync('./report.pdf'),
-  mimetype: 'application/pdf',
-  fileName: 'Monthly_Report.pdf'
-})
-```
-
-### Reactions, Polls & Location
-```javascript
-// React with an emoji
-await sock.sendMessage(jid, {
-  react: { text: '🔥', key: m.key }
-})
-
-// Interactive Poll
-await sock.sendMessage(jid, {
-  poll: {
-    name: 'Which framework do you prefer?',
-    values: ['Node.js', 'Bun', 'Deno'],
-    selectableCount: 1
-  }
-})
-
-// Location Pin
-await sock.sendMessage(jid, {
-  location: {
-    degreesLatitude: -6.2088,
-    degreesLongitude: 106.8456,
-    name: 'Jakarta Central'
-  }
-})
-```
-
----
-
-## 📩 Receiving & Processing Messages
+Send circular WhatsApp Video Notes to direct chats, groups, or channels:
 
 ```javascript
-import { downloadMediaMessage } from '@blckrose/baileys'
-
-sock.ev.on('messages.upsert', async ({ messages, type }) => {
-  if (type !== 'notify') return
-
-  for (const msg of messages) {
-    if (!msg.message || msg.key.fromMe) continue
-
-    const sender = msg.key.remoteJid
-    const messageType = Object.keys(msg.message)[0]
-    const text = msg.message?.conversation || msg.message?.[messageType]?.caption || msg.message?.[messageType]?.text || ''
-
-    console.log(`[Message] From: ${sender} | Type: ${messageType} | Content: ${text}`)
-
-    // Auto-reply to ping
-    if (text.toLowerCase() === 'ping') {
-      await sock.sendMessage(sender, { text: 'Pong! 🏓' }, { quoted: msg })
-    }
-
-    // Downloading Media Attachments
-    if (messageType === 'imageMessage' || messageType === 'videoMessage') {
-      const buffer = await downloadMediaMessage(
-        msg,
-        'buffer',
-        {},
-        {
-          logger: sock.logger,
-          reuploadRequest: sock.updateMediaMessage
-        }
-      )
-      console.log(`Downloaded ${messageType} size: ${buffer.length} bytes`)
-    }
-  }
-})
+await sock.sendMessage(jid, {
+  video: fs.readFileSync('./selfie-video.mp4'),
+  ptv: true // Renders as circular Video Note
+}, { quoted: m })
 ```
 
 ---
@@ -311,25 +367,29 @@ Make outbound 1:1 voice calls directly to WhatsApp contacts with custom audio st
 ```javascript
 // Start an automated call
 const call = await sock.call('6281234567890', {
-  audio: './audio/greeting.mp3', // Path, URL, or PCM Buffer
-  durationMs: 45000              // Max duration
+  audio: './audio/welcome.mp3', // File path, web URL, or PCM Buffer
+  durationMs: 45000              // Max duration limit
 })
 
 call.on('ringing', () => console.log('🔔 Phone is ringing...'))
 call.on('connected', () => console.log('📞 Call connected and audio playing!'))
 call.on('ended', (reason) => console.log('📴 Call ended. Reason:', reason))
 
-// Manually terminate call if needed
+// Manually hang up
 setTimeout(() => {
   call.hangup()
 }, 30000)
+
+// Generate Official WhatsApp Call Link (Audio / Video)
+const callLink = await sock.createCallLink('audio') // or 'video'
+console.log('Join Call:', `https://call.whatsapp.com/voice/${callLink}`)
 ```
 
 ---
 
 ## 🛡️ Anti-Stealth Group Defense
 
-Block malicious sender-key bursts designed to crash or overload group messaging:
+Block malicious sender-key bursts designed to crash or overload group chats:
 
 ```javascript
 const groupJid = '120363000000000000@g.us'
@@ -340,8 +400,57 @@ sock.stealth.setMode(groupJid, sock.stealth.MODE_ON)
 // Listen to security alarms
 sock.stealth.on('stealth:burst', ({ jid, sender, burstCount }) => {
   console.warn(`[DEFENSE] Detected stealth attack from ${sender} in ${jid} (${burstCount} packets)`)
-  // Kick malicious participant or mute group:
+  // Auto-kick attacker:
   sock.groupParticipantsUpdate(jid, [sender], 'remove')
+})
+```
+
+---
+
+## 💬 Basic Messages & Media
+
+```javascript
+// Text Message
+await sock.sendMessage(jid, { text: 'Hello World!' })
+
+// Mentions
+await sock.sendMessage(jid, {
+  text: 'Hello @6281234567890',
+  mentions: ['6281234567890@s.whatsapp.net']
+})
+
+// Photo / Image
+await sock.sendMessage(jid, {
+  image: fs.readFileSync('./image.png'),
+  caption: 'Sample photo'
+})
+
+// Voice Note (PTT)
+await sock.sendMessage(jid, {
+  audio: fs.readFileSync('./audio.mp3'),
+  mimetype: 'audio/mp4',
+  ptt: true
+})
+
+// Document
+await sock.sendMessage(jid, {
+  document: fs.readFileSync('./document.pdf'),
+  mimetype: 'application/pdf',
+  fileName: 'Contract.pdf'
+})
+
+// Emoji Reaction
+await sock.sendMessage(jid, {
+  react: { text: '🔥', key: m.key }
+})
+
+// Interactive Poll
+await sock.sendMessage(jid, {
+  poll: {
+    name: 'Favorite Runtime?',
+    values: ['Node.js', 'Bun', 'Deno'],
+    selectableCount: 1
+  }
 })
 ```
 
@@ -352,28 +461,20 @@ sock.stealth.on('stealth:burst', ({ jid, sender, burstCount }) => {
 ```javascript
 const groupJid = '120363000000000000@g.us'
 
-// Create a new group
-const group = await sock.groupCreate('My Awesome Group', ['6281234567890@s.whatsapp.net'])
-console.log('Group created with JID:', group.id)
+// Create Group
+const group = await sock.groupCreate('My Bot Group', ['6281234567890@s.whatsapp.net'])
 
-// Fetch group metadata
-const metadata = await sock.groupMetadata(groupJid)
-console.log(`Group: ${metadata.subject} | Members: ${metadata.participants.length}`)
+// Metadata
+const meta = await sock.groupMetadata(groupJid)
 
-// Promote / Demote participants
+// Add / Remove / Promote / Demote
+await sock.groupParticipantsUpdate(groupJid, ['6281234567890@s.whatsapp.net'], 'add')
 await sock.groupParticipantsUpdate(groupJid, ['6281234567890@s.whatsapp.net'], 'promote')
-await sock.groupParticipantsUpdate(groupJid, ['6281234567890@s.whatsapp.net'], 'demote')
-
-// Add / Remove participants
 await sock.groupParticipantsUpdate(groupJid, ['6281234567890@s.whatsapp.net'], 'remove')
 
-// Update Group Settings
-await sock.groupSettingUpdate(groupJid, 'announcement') // Only admins can send messages
-await sock.groupSettingUpdate(groupJid, 'not_announcement') // All members can send messages
-
-// Get Group Invite Link
-const inviteCode = await sock.groupInviteCode(groupJid)
-console.log('Invite link:', `https://chat.whatsapp.com/${inviteCode}`)
+// Invite Link
+const code = await sock.groupInviteCode(groupJid)
+console.log('Join URL:', `https://chat.whatsapp.com/${code}`)
 ```
 
 ---
@@ -383,14 +484,13 @@ console.log('Invite link:', `https://chat.whatsapp.com/${inviteCode}`)
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `auth` | `AuthenticationState` | **Required** | Auth state from `useMultiFileAuthState` or `useRoseDBAuthState`. |
-| `browser` | `WABrowserDescription` | `Browsers.macOS('Chrome')` | Client identification displayed in WhatsApp Linked Devices. |
-| `autoFollowChannel` | `string \| boolean` | `'120363433405105703@newsletter'` | Newsletter channel to automatically join on connect. |
-| `printQRInTerminal` | `boolean` | `false` | Pretty-prints the QR code to terminal console. |
-| `markOnlineOnConnect`| `boolean` | `true` | Sets account presence status to available upon connecting. |
-| `syncFullHistory` | `boolean` | `true` | Downloads complete chat history on initial pairing. |
-| `connectTimeoutMs` | `number` | `20000` | Connection handshake timeout in milliseconds. |
-| `keepAliveIntervalMs`| `number` | `30000` | WebSocket ping-pong keep-alive interval. |
-| `logger` | `ILogger` | `Pino Logger` | Custom logger instance for logging events. |
+| `browser` | `WABrowserDescription` | `Browsers.macOS('Chrome')` | Linked device identity shown in WhatsApp. |
+| `printQRInTerminal` | `boolean` | `false` | Displays terminal QR code. |
+| `markOnlineOnConnect`| `boolean` | `true` | Updates presence to online immediately after connecting. |
+| `syncFullHistory` | `boolean` | `true` | Fetches full conversation history on initial sync. |
+| `connectTimeoutMs` | `number` | `20000` | Socket handshake timeout (ms). |
+| `keepAliveIntervalMs`| `number` | `30000` | Ping-pong keep-alive interval (ms). |
+| `logger` | `ILogger` | `Pino Logger` | Custom logger instance. |
 
 ---
 
